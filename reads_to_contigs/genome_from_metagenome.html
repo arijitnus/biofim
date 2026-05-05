@@ -1,0 +1,258 @@
+<html>
+<head>
+<title>genome_from_metagenome.ipynb</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #6a737d; font-style: italic;}
+.s1 { color: #24292e;}
+.s2 { color: #6a737d;}
+.s3 { color: #d73a49;}
+.s4 { color: #005cc5;}
+.s5 { color: #24292e;}
+.s6 { color: #032f62;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+genome_from_metagenome.ipynb</font>
+</center></td></tr></table>
+<pre><span class="s0">#%% md 
+</span><span class="s1"># Genome from Metagenome 
+</span><span class="s0">#%% md 
+</span><span class="s1">## From raw reads to assembly 
+</span><span class="s0">#%% 
+</span><span class="s2"># Removing sequencing adapters using cutadapt</span>
+<span class="s2"># more info at https://cutadapt.readthedocs.io/en/stable/guide.html</span>
+<span class="s2"># Reference: DOI: https://doi.org/10.14806/ej.17.1.200</span>
+<span class="s2"># detail: https://cutadapt.readthedocs.io/en/stable/</span>
+<span class="s2"># Intallation using conda</span>
+<span class="s1">conda create </span><span class="s3">-</span><span class="s1">n cutadaptenv cutadaptenv</span>
+<span class="s1">conda activate cutadaptenv</span>
+<span class="s1">cutadapt </span><span class="s3">--</span><span class="s1">version </span><span class="s2"># for checking</span>
+<span class="s2"># Using cutadapt</span>
+<span class="s1">cutadapt </span><span class="s3">-</span><span class="s1">a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA </span><span class="s3">-</span><span class="s1">A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT </span><span class="s3">-</span><span class="s1">o outread1.fastq </span><span class="s3">-</span><span class="s1">p outread2.fastq \ </span>
+<span class="s1">reads_1.fastq reads_2.fastq </span><span class="s3">--</span><span class="s1">error</span><span class="s3">-</span><span class="s1">rate </span><span class="s4">0.2 </span><span class="s3">--</span><span class="s1">minimum</span><span class="s3">-</span><span class="s1">length </span><span class="s4">75 </span><span class="s3">--</span><span class="s1">no</span><span class="s3">-</span><span class="s1">indels</span>
+<span class="s0">#%% 
+</span><span class="s2"># Trimming low quality regions using BBduk (part of BBmap software package)</span>
+<span class="s2"># link : https://sourceforge.net/projects/bbmap/</span>
+<span class="s2"># info at : http://seqanswers.com/forums/showthread.php?t=42776</span>
+<span class="s1">bbduk.sh </span><span class="s3">-</span><span class="s1">Xmx1g </span><span class="s3">in=</span><span class="s1">outread_1.fastq in2</span><span class="s3">=</span><span class="s1">outread_2.fastq out1</span><span class="s3">=</span><span class="s1">clean_1.fq out2</span><span class="s3">=</span><span class="s1">clean_2.fq trimq</span><span class="s3">=</span><span class="s4">20 </span><span class="s1">qtrim</span><span class="s3">=</span><span class="s1">rl minlen</span><span class="s3">=</span><span class="s4">75</span>
+
+<span class="s2">#5-10 min for 15 Gb data</span>
+<span class="s0">#%% 
+</span><span class="s2"># Metagenome Comparison</span>
+<span class="s2"># To compare similarity betweent the metagenomes by MASH</span>
+<span class="s2"># https://github.com/lskatz/mashtree</span>
+<span class="s1">conda install </span><span class="s3">-</span><span class="s1">c bioconda mashtree</span>
+
+<span class="s1">mashtree_bootstrap.pl </span><span class="s3">--</span><span class="s1">reps </span><span class="s4">100 </span><span class="s3">--</span><span class="s1">numcpus </span><span class="s4">20 </span><span class="s3">*</span><span class="s1">.fq.gz </span><span class="s3">-- --</span><span class="s1">min</span><span class="s3">-</span><span class="s1">depth </span><span class="s4">0 </span><span class="s3">&gt; </span><span class="s1">mashtree.bootstrap.dnd</span>
+<span class="s0">#%% 
+</span><span class="s2"># Assembly using Megahit</span>
+<span class="s2"># paper: Sczyrba A, Hofmann P, Belmann P, Koslicki D, Janssen S, Dröge J, Gregor I, Majda S, Fiedler J, Dahms E, Bremges A. Critical assessment of metagenome interpretation—a benchmark of metagenomics software. Nature methods. 2017 Nov;14(11):1063-71.</span>
+<span class="s2"># installation: conda install -c bioconda megahit</span>
+<span class="s1">megahit </span><span class="s3">-</span><span class="s4">1 </span><span class="s1">clean_1.fq </span><span class="s3">-</span><span class="s4">2 </span><span class="s1">clean_2.fq </span><span class="s3">--</span><span class="s1">k</span><span class="s3">-</span><span class="s1">min </span><span class="s4">27 </span><span class="s3">--</span><span class="s1">k</span><span class="s3">-</span><span class="s1">max </span><span class="s4">197 </span><span class="s3">--</span><span class="s1">k</span><span class="s3">-</span><span class="s1">step </span><span class="s4">10 </span><span class="s5">–</span><span class="s1">min_contigs_len </span><span class="s4">1000 </span><span class="s3">-</span><span class="s1">t </span><span class="s4">10</span>
+
+<span class="s2">#the detail about the assembled contigs will be at the end of megahit log file</span>
+<span class="s2"># time : 1hrs for nearly 15Gb data with 24 thread</span>
+<span class="s0">#%% 
+</span><span class="s2"># For co-assembly, interleaving of reads are need to be done</span>
+<span class="s2"># script link: https://github.com/dariober/bioinformatics-cafe/tree/master/interleaveFastq</span>
+<span class="s1">interleave_fastq.sh forward.fastq reverse.fastq </span><span class="s3">&gt; </span><span class="s1">meta1.fastq</span>
+<span class="s2"># Then provides this interleaved reads during assembly</span>
+<span class="s1">megahit </span><span class="s3">--</span><span class="s4">12 </span><span class="s1">meta1.fastq, meta2.fastq, meta3.fastq </span><span class="s3">--</span><span class="s1">k</span><span class="s3">-</span><span class="s1">min </span><span class="s4">27 </span><span class="s3">--</span><span class="s1">k</span><span class="s3">-</span><span class="s1">max </span><span class="s4">197 </span><span class="s3">--</span><span class="s1">k</span><span class="s3">-</span><span class="s1">step </span><span class="s4">10 </span><span class="s5">–</span><span class="s1">min_contigs_len </span><span class="s4">1000 </span><span class="s3">-</span><span class="s1">t </span><span class="s4">10</span>
+
+<span class="s1">(check megahit githib </span><span class="s3">for </span><span class="s1">usage of </span><span class="s3">--</span><span class="s1">k</span><span class="s3">-</span><span class="s1">min max </span><span class="s3">and </span><span class="s1">other parameter depending upon metagenome source </span><span class="s3">and </span><span class="s1">sequencing depth)</span>
+<span class="s0">#%% 
+</span><span class="s2"># Read containment was estimated by mapping the trimmed paired-end reads used for each assembly to the assembled contigs </span>
+<span class="s0">#%% 
+</span><span class="s2"># bowtie2</span>
+<span class="s2"># installation: conda install bowtie2</span>
+<span class="s2"># detail: http://bowtie-bio.sourceforge.net/bowtie2/index.shtml</span>
+<span class="s2"># for co-assembly either one can go for separate mapping or combined mapping</span>
+<span class="s0">#%% 
+</span><span class="s2"># Indexing</span>
+<span class="s1">bowtie2</span><span class="s3">-</span><span class="s1">build contigs.fa contigs_indexed</span>
+<span class="s0">#%% 
+</span><span class="s2"># Mapping</span>
+    <span class="s1">bowtie2 </span><span class="s5">–</span><span class="s1">fr </span><span class="s3">-</span><span class="s1">x contigs_indexed </span><span class="s3">-</span><span class="s4">1 </span><span class="s1">read1.fq </span><span class="s3">-</span><span class="s4">2 </span><span class="s1">read2.fq </span><span class="s3">--</span><span class="s1">no</span><span class="s3">-</span><span class="s1">unal </span><span class="s3">-</span><span class="s1">X </span><span class="s4">1000 </span><span class="s3">-</span><span class="s1">S contigs.sam </span><span class="s3">-</span><span class="s1">p </span><span class="s4">10</span>
+<span class="s0">#%% 
+</span><span class="s2"># sam to bam (more detail on options http://www.htslib.org/doc/samtools-view.html)</span>
+<span class="s1">samtools view </span><span class="s3">-</span><span class="s1">bS contigs.sam </span><span class="s3">&gt; </span><span class="s1">contigs.bam </span><span class="s3">--</span><span class="s1">threads </span><span class="s4">10</span>
+<span class="s0">#%% 
+</span><span class="s2"># Sorting</span>
+<span class="s1">samtools sort contigs.bam </span><span class="s3">&gt; </span><span class="s1">contigs_sort.bam </span><span class="s3">--</span><span class="s1">threads </span><span class="s4">10</span>
+<span class="s0">#%% 
+</span><span class="s2"># all in one line</span>
+<span class="s1">bowtie2 </span><span class="s5">–</span><span class="s1">fr </span><span class="s3">-</span><span class="s1">x contigs_indexed </span><span class="s3">-</span><span class="s1">p </span><span class="s4">20 </span><span class="s3">-</span><span class="s4">1 </span><span class="s1">read1.fq </span><span class="s3">-</span><span class="s4">2 </span><span class="s1">read2.fq </span><span class="s3">--</span><span class="s1">no</span><span class="s3">-</span><span class="s1">unal </span><span class="s3">-</span><span class="s1">X </span><span class="s4">1000 </span><span class="s3">| </span><span class="s1">samtools view </span><span class="s3">-</span><span class="s1">Shu </span><span class="s3">- | </span><span class="s1">samtools sort </span><span class="s3">- -</span><span class="s1">o sort.bam</span>
+
+<span class="s2">#8 hrs for 10metagenome</span>
+<span class="s0">#%% md 
+</span><span class="s1">## Genome Binning and bin purification 
+</span><span class="s0">#%% 
+</span><span class="s2"># reading: Meyer F, et al. AMBER: assessment of metagenome binners. GigaScience. 2018 Jun;7(6):giy069.</span>
+<span class="s0">#%% 
+</span><span class="s2"># 3 tools for binning: MetaBat2, Concoct, MaxBin2 (based on sequence composition and differential coverage)</span>
+<span class="s2"># installation</span>
+<span class="s2"># metabat2 detail at : https://bitbucket.org/berkeleylab/metabat/src/master/</span>
+<span class="s2"># concoct installation: conda create -n concoct_env python=3 concoct</span>
+<span class="s2"># maxbin installation: conda install -c bioconda maxbin2</span>
+<span class="s0">#%% 
+</span><span class="s2"># Using metabat2</span>
+<span class="s2"># Generating depth file (jgi_summarize_bam_contig_depths file comes along with metabat2 program)</span>
+<span class="s1">jgi_summarize_bam_contig_depths contigs_sort.bam depth.txt</span>
+<span class="s1">metabat2 </span><span class="s3">-</span><span class="s1">I contigs.fa </span><span class="s3">-</span><span class="s1">a depth.txt </span><span class="s3">--</span><span class="s1">minS </span><span class="s4">80 </span><span class="s3">-</span><span class="s1">o out_bins</span>
+<span class="s0">#%% 
+</span><span class="s2"># Using maxbin2</span>
+<span class="s2"># maxbin2 details for creating abundance file: https://sourceforge.net/projects/maxbin2/files/</span>
+<span class="s2"># abundance file can be createed from metabat2 depth file by simple editing (cut -f1,3 and sed -i '1d')</span>
+<span class="s1">run_MaxBin.pl </span><span class="s3">-</span><span class="s1">min_contig_length </span><span class="s4">2500 </span><span class="s3">-</span><span class="s1">contig contigs.fa </span><span class="s3">-</span><span class="s1">abund myabund </span><span class="s3">-</span><span class="s1">out myout </span><span class="s3">-</span><span class="s1">thread </span><span class="s4">10</span>
+<span class="s0">#%% 
+</span><span class="s2"># Using concoct</span>
+<span class="s2">#1 cut contigs into smaller parts:</span>
+<span class="s1">cut_up_fasta.py contigs.fa </span><span class="s3">-</span><span class="s1">c </span><span class="s4">10000 </span><span class="s3">-</span><span class="s1">o </span><span class="s4">0 </span><span class="s3">--</span><span class="s1">merge_last </span><span class="s3">-</span><span class="s1">b contigs_10K.bed </span><span class="s3">&gt; </span><span class="s1">contigs_10K.fa</span>
+
+<span class="s2">#2 Generate table with coverage depth information per sample and subcontig. </span>
+<span class="s1">concoct_coverage_table.py contigs_10K.bed mapping</span><span class="s3">/</span><span class="s1">Sample</span><span class="s3">*</span><span class="s1">.sorted.bam </span><span class="s3">&gt; </span><span class="s1">coverage_table.tsv</span>
+
+<span class="s2">#3 running concoct</span>
+<span class="s1">concoct </span><span class="s3">--</span><span class="s1">composition_file contigs_10K.fa </span><span class="s3">-</span><span class="s1">l </span><span class="s4">2500 </span><span class="s3">--</span><span class="s1">coverage_file coverage_table.tsv </span><span class="s3">-</span><span class="s1">b concoct_output</span><span class="s3">/</span>
+
+<span class="s2">#4 Merge subcontig clustering into original contig clustering:</span>
+<span class="s1">merge_cutup_clustering.py concoct_output</span><span class="s3">/</span><span class="s1">clustering_gt1000.csv </span><span class="s3">&gt; </span><span class="s1">concoct_output</span><span class="s3">/</span><span class="s1">clustering_merged.csv</span>
+
+<span class="s2">#5 Extract bins as individual FASTA</span>
+<span class="s1">mkdir concoct_output</span><span class="s3">/</span><span class="s1">fasta_bins</span>
+<span class="s1">extract_fasta_bins.py contigs.fa concoct_output</span><span class="s3">/</span><span class="s1">clustering_merged.csv </span><span class="s3">--</span><span class="s1">output_path concoct_output</span><span class="s3">/</span><span class="s1">fasta_bins</span>
+<span class="s0">#%% 
+</span><span class="s2"># Aggregating and dereplicating all the bins using DAS Tool</span>
+<span class="s2"># paper: doi: 10.1038/s41564-018-0171-1</span>
+<span class="s2"># installation: conda install -c bioconda das_tool</span>
+<span class="s2"># detail: https://github.com/cmks/DAS_Tool</span>
+
+<span class="s2"># preparing tsv file for dastool</span>
+<span class="s2"># from maxbin and metabat bins</span>
+<span class="s1">bash </span><span class="s3">~/</span><span class="s1">das_tool</span><span class="s3">-</span><span class="s4">1.1.1</span><span class="s3">-</span><span class="s4">2</span><span class="s3">/</span><span class="s1">src</span><span class="s3">/</span><span class="s1">Fasta_to_Scaffolds2Bin.sh </span><span class="s3">-</span><span class="s1">i </span><span class="s3">~/</span><span class="s1">bin_folder </span><span class="s3">-</span><span class="s1">e fa </span><span class="s3">&gt; </span><span class="s1">maxbin.scaffolds2bin.tsv</span>
+
+<span class="s2"># from concoct coverage csv file</span>
+<span class="s1">perl </span><span class="s3">-</span><span class="s1">pe </span><span class="s6">&quot;s/,/</span><span class="s4">\t</span><span class="s6">concoct./g;&quot; </span><span class="s1">concoct_clustering_gt1000.csv </span><span class="s3">&gt; </span><span class="s1">concoct.scaffolds2bin.tsv</span>
+
+<span class="s2">#running das tool</span>
+<span class="s1">DAS_Tool  </span><span class="s3">-</span><span class="s1">i </span><span class="s3">~/</span><span class="s1">concoct.scaffolds2bin.tsv,</span><span class="s3">~/</span><span class="s1">maxbin.scaffolds2bin.tsv,</span><span class="s3">~/</span><span class="s1">metabat.scaffolds2bin.tsv \ </span>
+<span class="s3">-</span><span class="s1">l concoct,maxbin,metabat </span><span class="s3">-</span><span class="s1">c </span><span class="s3">~/</span><span class="s1">contigs.fa </span><span class="s3">-</span><span class="s1">o das_output</span><span class="s3">/</span><span class="s1">DASbin </span><span class="s3">-</span><span class="s1">t </span><span class="s4">10 </span><span class="s3">--</span><span class="s1">search_engine diamond \ </span>
+<span class="s3">--</span><span class="s1">write_bins </span><span class="s4">1 </span><span class="s3">--</span><span class="s1">score_threshold </span><span class="s4">0</span>
+<span class="s0">#%% 
+</span><span class="s2"># Bin refinement using RefineM</span>
+<span class="s2">#1. Generating index bam file from sorted bam file</span>
+<span class="s1">samtools index scaffold_sort.bam</span>
+
+<span class="s2">#2. To identify scaffolds with genomic properties that are divergent from the expect values for a bin</span>
+<span class="s1">refinem scaffold_stats </span><span class="s3">-</span><span class="s1">c </span><span class="s4">10 </span><span class="s1">scaffold.fa </span><span class="s3">~/</span><span class="s1">das_output</span><span class="s3">/</span><span class="s1">DASbin scaffold_sort.bam </span><span class="s3">--</span><span class="s1">genome_ext fa output</span><span class="s3">-</span><span class="s1">folder</span>
+
+<span class="s2">#3. Scaffolds with divergent genomic properties can then be identified</span>
+<span class="s1">refinem outliers output</span><span class="s3">-</span><span class="s1">folder</span><span class="s3">/</span><span class="s1">scaffold_stats.tsv lieroutput_dir</span>
+
+<span class="s2">#4. Contaminating scaffolds can be removed from bins</span>
+<span class="s1">refinem filter_bins path</span><span class="s3">-</span><span class="s1">to</span><span class="s3">-</span><span class="s1">bins lieroutput_dir</span><span class="s3">/</span><span class="s1">outliers.tsv filtered_output </span><span class="s3">--</span><span class="s1">genome_ext fa</span>
+<span class="s0">#%% 
+</span><span class="s2"># MAGpurify v1.0 to identify and remove taxonomically discordant contigs</span>
+<span class="s2"># detail: https://github.com/snayfach/MAGpurify</span>
+<span class="s2"># reference: https://doi.org/10.1038/s41586-019-1058-x</span>
+<span class="s2"># installation: conda create --name magpurify python=2.7</span>
+<span class="s2"># conda install -c conda-forge -c bioconda magpurify</span>
+<span class="s2"># download database: wget https://zenodo.org/record/3688811/files/MAGpurify-db-v1.0.tar.bz2?download=1</span>
+<span class="s2"># rename and untar it</span>
+<span class="s2"># add to path: export MAGPURIFYDB=/path/to/MAGpurify-db-v1.0</span>
+<span class="s2"># module can be phylo-markers, clade-markers.</span>
+<span class="s1">magpurify </span><span class="s3">&lt;</span><span class="s1">module</span><span class="s3">&gt; &lt;</span><span class="s1">input mag</span><span class="s3">&gt; &lt;</span><span class="s1">output directory</span><span class="s3">&gt;</span>
+<span class="s1">magpurify clean</span><span class="s3">-</span><span class="s1">bin </span><span class="s3">&lt;</span><span class="s1">input mag</span><span class="s3">&gt; &lt;</span><span class="s1">output directory</span><span class="s3">&gt; &lt;</span><span class="s1">output mag</span><span class="s3">&gt;</span>
+<span class="s0">#%% 
+</span><span class="s2"># Species and subspecies level MAGs using dRep</span>
+<span class="s2"># reference: https://doi.org/10.1038/ismej.2017.126</span>
+<span class="s2"># detail: https://github.com/MrOlm/drep</span>
+<span class="s2"># installation: pip install drep</span>
+<span class="s1">dRep dereplicate </span><span class="s3">-</span><span class="s1">comp </span><span class="s4">50 </span><span class="s3">-</span><span class="s1">con </span><span class="s4">10 </span><span class="s3">-</span><span class="s1">sani </span><span class="s4">0.95</span><span class="s3">/</span><span class="s4">0.99 </span><span class="s1">S_algorithm gANI outout_directory </span><span class="s3">-</span><span class="s1">g path</span><span class="s3">/</span><span class="s1">to</span><span class="s3">/</span><span class="s1">genomes</span><span class="s3">/*</span><span class="s1">.fasta</span>
+<span class="s0">#%% md 
+</span><span class="s1">## MAG quality assessment 
+</span><span class="s0">#%% 
+</span><span class="s2"># Genome completeness, redundancy and additional statistics using CheckM lineage workflow</span>
+<span class="s2"># detail: https://github.com/Ecogenomics/CheckM/wiki</span>
+<span class="s2"># reference: http://www.genome.org/cgi/doi/10.1101/gr.186072.114.</span>
+<span class="s2"># installation through bioconda</span>
+<span class="s1">conda create </span><span class="s3">-</span><span class="s1">n py27 python</span><span class="s3">=</span><span class="s4">2.7 </span><span class="s1">anaconda checkm</span><span class="s3">-</span><span class="s1">genome</span>
+<span class="s1">conda activate py27</span>
+<span class="s1">cd </span><span class="s3">~/</span>
+<span class="s1">mkdir checkm</span>
+<span class="s1">cd checkm</span>
+<span class="s1">curl </span><span class="s3">-</span><span class="s1">L </span><span class="s3">-</span><span class="s1">O curl </span><span class="s3">-</span><span class="s1">L </span><span class="s3">-</span><span class="s1">O https</span><span class="s3">://</span><span class="s1">data.ace.uq.edu.au</span><span class="s3">/</span><span class="s1">public</span><span class="s3">/</span><span class="s1">CheckM_databases</span><span class="s3">/</span><span class="s1">checkm_data_2015_01_16.tar.gz</span>
+<span class="s1">tar xzf checkm_data_2015_01_16.tar.gz</span>
+<span class="s1">checkm data setRoot</span>
+
+<span class="s2">#runnning</span>
+<span class="s1">checkm lineage_wf </span><span class="s5">–</span><span class="s1">x fa </span><span class="s3">~/</span><span class="s1">bin_folder out_dir </span><span class="s3">-</span><span class="s1">t </span><span class="s4">10</span>
+<span class="s2"># to generate report</span>
+<span class="s1">checkm qa out_dir</span><span class="s3">/</span><span class="s1">lineage.ms out </span><span class="s3">-</span><span class="s1">f checkm.out.txt</span>
+<span class="s0">#%% 
+</span><span class="s2"># tRNA prediction</span>
+<span class="s2"># using tRNAScanSE from link: http://trna.ucsc.edu/software/trnascan-se-2.0.5.tar.gz</span>
+
+<span class="s0">#%% 
+</span><span class="s2"># 16S rRNA prediction</span>
+<span class="s2"># using 16SfromHMM.py from https://github.com/christophertbrown/bioscripts</span>
+<span class="s0">#%% md 
+</span><span class="s1">## Taxonomic assignment and phylogenetic analysis 
+</span><span class="s0">#%% 
+</span><span class="s2"># Taxonomy was assigned using GTDB-Tk</span>
+<span class="s2"># reference: https://doi.org/10.1093/bioinformatics/btz848</span>
+<span class="s2"># details: https://github.com/ecogenomics/gtdbtk and https://ecogenomics.github.io/GTDBTk/</span>
+<span class="s2"># installation:</span>
+<span class="s1">conda create </span><span class="s3">-</span><span class="s1">n gtdbtk </span><span class="s3">-</span><span class="s1">c bioconda gtdbtk</span>
+<span class="s1">conda activate gtdbtk</span>
+<span class="s2"># dependency: prodigal,pplacer, FastANI,fastTree, Mash</span>
+<span class="s2"># Download the reference package (~27 Gb)</span>
+<span class="s1">download</span><span class="s3">-</span><span class="s1">db.sh</span>
+<span class="s2"># Set the GTDBTK_DATA_PATH environment variable in {gtdbtk environment path}/etc/conda/activate.d/gtdbtk.sh to the reference package location.</span>
+
+<span class="s2"># running gtdbtk</span>
+<span class="s1">gtdbtk classify_wf </span><span class="s3">--</span><span class="s1">genome_dir genomes</span><span class="s3">/ --</span><span class="s1">out_dir classify_wf_out </span><span class="s3">--</span><span class="s1">cpus </span><span class="s4">15</span>
+<span class="s0">#%% 
+</span><span class="s2"># Phylogenetic analysis by PhyloPhlAn2</span>
+<span class="s2"># reference: https://doi.org/10.1038/ncomms3304</span>
+<span class="s2"># details : https://huttenhower.sph.harvard.edu/phylophlan/</span>
+<span class="s2"># installation: conda install -c hcc phylophlan</span>
+
+<span class="s2"># “de novo” phylogenetic tree building</span>
+<span class="s1">.</span><span class="s3">/</span><span class="s1">phylophlan.py </span><span class="s3">-</span><span class="s1">u example_genomes </span><span class="s3">--</span><span class="s1">nproc </span><span class="s4">10</span>
+
+<span class="s2">#Inserting new genomes to the tree of life</span>
+<span class="s1">.</span><span class="s3">/</span><span class="s1">phylophlan.py </span><span class="s3">-</span><span class="s1">i my_genomes_to_insert </span><span class="s3">--</span><span class="s1">nproc </span><span class="s4">10</span>
+<span class="s0">#%% 
+</span><span class="s2"># Visualization of tree by iTOL v5.3</span>
+<span class="s0">#%% md 
+</span><span class="s1">## Functional analysis of bins 
+</span><span class="s0">#%% 
+</span><span class="s2">#1 direct approach</span>
+<span class="s2"># genes prediction and annotation by prokka (prokarytoic genome annotation pipeline)</span>
+<span class="s2"># detail: https://github.com/tseemann/prokka</span>
+<span class="s2"># installation:</span>
+<span class="s1">conda install </span><span class="s3">-</span><span class="s1">c conda</span><span class="s3">-</span><span class="s1">forge </span><span class="s3">-</span><span class="s1">c bioconda </span><span class="s3">-</span><span class="s1">c defaults prokka</span>
+<span class="s2"># using</span>
+<span class="s1">prokka contigs.fa </span><span class="s3">--</span><span class="s1">cpus </span><span class="s4">0 </span><span class="s3">--</span><span class="s1">outdir mydir</span>
+
+<span class="s2">#2 indirect approach</span>
+<span class="s2"># cds prediction by prodigal</span>
+<span class="s2"># detail: https://github.com/hyattpd/prodigal/wiki</span>
+<span class="s2"># installation: conda install -c bioconda prodigal</span>
+<span class="s1">prodigal </span><span class="s3">-</span><span class="s1">i my.genome.fna </span><span class="s3">-</span><span class="s1">o gene.coords.gbk </span><span class="s3">-</span><span class="s1">a protein.translations.faa</span>
+
+<span class="s2"># annotation of cds through pfam, tigrfam, kegg or any other specialised database (e.g. dbCan)</span>
+<span class="s2"># by kofam</span>
+<span class="s2"># software: ftp://ftp.genome.jp/pub/tools/kofamscan/</span>
+<span class="s2"># kofam database: ftp://ftp.genome.jp/pub/db/kofam/</span>
+
+<span class="s2"># pathway prediction</span>
+<span class="s2"># by using minpath wiht ko data obtained from kofam result</span>
+<span class="s2"># using and detial of minpath: https://omics.informatics.indiana.edu/MinPath/</span></pre>
+</body>
+</html>
